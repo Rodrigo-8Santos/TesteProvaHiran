@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { Box, Alert, AlertIcon, VStack, FormControl, FormLabel, Input, Button, Text, Link as ChakraLink, NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper } from '@chakra-ui/react'; // Added NumberInput components
+import { 
+  Box, VStack, FormControl, FormLabel, Input, Button, Text, Link as ChakraLink, 
+  Alert, AlertIcon, NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper 
+} from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import AuthLayout from '../../components/AuthLayout'; // Import the new layout
+import AuthLayout from '../../components/AuthLayout'; // Use the themed AuthLayout
 
 const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [nome, setNome] = useState(''); 
   const [email, setEmail] = useState('');
-  const [idade, setIdade] = useState(''); // Added state for age
+  const [idade, setIdade] = useState(''); 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,7 +28,6 @@ const Register = () => {
       setError('O campo Nome é obrigatório.');
       return;
     }
-    // Validate idade - ensure it's a number and required
     const ageNumber = parseInt(idade, 10);
     if (isNaN(ageNumber) || idade === '') { 
       setError('O campo Idade é obrigatório e deve ser um número.');
@@ -40,42 +42,44 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      // Pass name and age along with email and password
       const userData = { 
         nome: nome, 
-        idade: ageNumber, // Pass the parsed number
-        // descricao: '' // Add description if needed/available
+        idade: ageNumber, 
       }; 
       const { success: registerSuccess, error: registerError } = await register(email, password, userData);
 
       if (registerSuccess) {
-        setSuccess('Conta criada com sucesso! Você será redirecionado para o login.');
+        setSuccess('Identidade forjada com sucesso! Redirecionando para autorização...');
         setTimeout(() => {
           navigate('/login');
-        }, 2000); 
+        }, 2500); 
       } else {
-        setError(registerError?.message || 'Erro ao criar conta. Verifique os dados e tente novamente.');
+        setError(registerError?.message || 'Falha ao forjar identidade. Verifique os dados.');
       }
     } catch (err) {
       console.error("Registration error:", err);
-      setError(err.message || 'Erro ao criar conta. Tente novamente mais tarde.');
+      setError(err.message || 'Erro crítico ao forjar identidade.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Criar Nova Conta">
-      <Box width="100%">
+    // Use AuthLayout with the same title as Login for consistency
+    <AuthLayout title="NeoCRUD // BLACKWALL PROTOCOL">
+      <VStack spacing={4} align="stretch" width="100%">
+        {/* Optional: Add a small description specific to registration if needed */}
+        {/* <Text textAlign="center" fontSize="sm" color="gray.400" mb={6}>...</Text> */}
+
         {error && (
-          <Alert status="error" borderRadius="md" mb={4}>
-            <AlertIcon />
+          <Alert status="error" borderRadius="md" variant="solid" bg="red.700" color="white">
+            <AlertIcon color="white" />
             {error}
           </Alert>
         )}
         {success && (
-          <Alert status="success" borderRadius="md" mb={4}>
-            <AlertIcon />
+          <Alert status="success" borderRadius="md" variant="solid" bg="brand.600" color="blackwall.background">
+            <AlertIcon color="blackwall.background" />
             {success}
           </Alert>
         )}
@@ -83,88 +87,83 @@ const Register = () => {
         <form onSubmit={handleSubmit}>
           <VStack spacing={4}>
             <FormControl id="nome" isRequired>
-              <FormLabel>Nome</FormLabel>
+              <FormLabel fontFamily="body" fontWeight="600">Nome (Identificador)</FormLabel>
               <Input 
                 type="text" 
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                placeholder="Seu nome completo"
-                focusBorderColor="blue.500"
+                placeholder="Nome da nova identidade"
               />
             </FormControl>
 
-            {/* Added Age Field */}
             <FormControl id="idade" isRequired>
-              <FormLabel>Idade</FormLabel>
-              {/* Using NumberInput for better age input handling */}
+              <FormLabel fontFamily="body" fontWeight="600">Idade (Registro)</FormLabel>
               <NumberInput 
                 min={0} 
                 value={idade} 
                 onChange={(valueString) => setIdade(valueString)} 
-                focusBorderColor="blue.500"
+                focusBorderColor="brand.400"
               >
-                <NumberInputField placeholder="Sua idade" />
+                <NumberInputField placeholder="Idade registrada" bg="gray.950" borderColor="gray.700" _hover={{ borderColor: 'gray.600' }} />
                 <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
+                  <NumberIncrementStepper borderColor="gray.700" _hover={{ bg: 'gray.800' }}/>
+                  <NumberDecrementStepper borderColor="gray.700" _hover={{ bg: 'gray.800' }}/>
                 </NumberInputStepper>
               </NumberInput>
             </FormControl>
 
             <FormControl id="email" isRequired>
-              <FormLabel>Email</FormLabel>
+              <FormLabel fontFamily="body" fontWeight="600">Email (Ponto de Acesso)</FormLabel>
               <Input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu.email@exemplo.com"
-                focusBorderColor="blue.500"
+                placeholder="ponto.acesso@dominio.net"
               />
             </FormControl>
             
             <FormControl id="password" isRequired>
-              <FormLabel>Senha</FormLabel>
+              <FormLabel fontFamily="body" fontWeight="600">Senha (Chave Mestra)</FormLabel>
               <Input 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Crie uma senha segura"
-                focusBorderColor="blue.500"
+                placeholder="Crie a chave de acesso"
               />
             </FormControl>
 
             <FormControl id="confirmPassword" isRequired>
-              <FormLabel>Confirmar Senha</FormLabel>
+              <FormLabel fontFamily="body" fontWeight="600">Confirmar Senha (Verificação)</FormLabel>
               <Input 
                 type="password" 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirme sua senha"
-                focusBorderColor="blue.500"
+                placeholder="Confirme a chave mestra"
               />
             </FormControl>
             
             <Button 
               type="submit" 
-              colorScheme="blue" 
+              colorScheme="brand" // Use highlight color
+              variant="solid"
               width="full" 
               mt={4}
               isLoading={isLoading}
-              loadingText="Criando conta..."
+              loadingText="Forjando Identidade..."
               isDisabled={success} 
             >
-              Registrar
+              Forjar Identidade
             </Button>
           </VStack>
         </form>
         
-        <Text mt={6} textAlign="center">
-          Já tem uma conta?{' '}
-          <ChakraLink as={RouterLink} to="/login" color="blue.500" fontWeight="medium">
-            Faça login
+        <Text mt={6} textAlign="center" fontSize="sm">
+          Já possui acesso?{' '}
+          <ChakraLink as={RouterLink} to="/login" color="brand.400" fontWeight="600">
+            Autorizar Acesso
           </ChakraLink>
         </Text>
-      </Box>
+      </VStack>
     </AuthLayout>
   );
 };

@@ -1,88 +1,79 @@
 import React from 'react';
-import { Card, CardHeader, CardBody, CardFooter, Heading, Text, Button, IconButton, Flex, Spacer, Avatar, Box } from '@chakra-ui/react'; // Removed useColorModeValue
-import { FiEdit, FiTrash2 } from 'react-icons/fi';
+import { Box, Heading, Text, Flex, IconButton, Avatar, Spacer, Tooltip } from '@chakra-ui/react';
+import { EditIcon, DeleteIcon } from '@chakra-ui/icons';
 
 const UserCard = ({ user, onEdit, onDelete }) => {
-  // Use fixed dark mode values
-  const cardBg = 'gray.700'; 
-  const borderColor = 'gray.600';
-  const textColor = 'whiteAlpha.900';
-  const secondaryTextColor = 'gray.400';
-  const headingColor = 'whiteAlpha.900';
-
-  // Handle potential missing user data gracefully
-  const userName = user?.nome || 'Nome não disponível';
-  const userEmail = user?.email || 'Email não disponível';
+  // Use theme colors directly
+  const highlightColor = 'brand.400'; // #2dd4f7
+  const dangerColor = 'red.700'; // #750000
+  const panelBg = 'blackwall.panel'; // #121212
+  const textColor = 'blackwall.text'; // #c0c0c0
+  const subtleTextColor = 'gray.400';
 
   return (
-    <Card 
-      borderWidth="1px" 
-      borderRadius="lg" 
-      borderColor={borderColor}
-      bg={cardBg}
-      boxShadow="md"
-      overflow="hidden" 
-      height="100%" 
-      display="flex"
-      flexDirection="column"
-      color={textColor} // Set default text color for the card
+    <Box 
+      p={5} 
+      // Use Card base style from theme (bg, border, shadow, hover)
+      variant="outline" // This might not be needed if Card style is applied globally
+      borderRadius="md"
+      bg={panelBg} // Explicitly set for clarity or override
+      borderColor="gray.700"
+      borderWidth="1px"
+      _hover={{ // Enhance hover from theme
+        borderColor: highlightColor,
+        boxShadow: `0 0 20px rgba(45, 212, 247, 0.2), 0 0 8px rgba(117, 0, 0, 0.1)`,
+        transform: 'translateY(-3px)',
+      }}
+      transition="all 0.3s ease-out"
+      position="relative" // For potential absolute elements later
+      overflow="hidden" // Ensure content fits
     >
-      <CardHeader pb={2}>
-        <Flex spacing="4">
-          <Flex flex="1" gap="4" alignItems="center" flexWrap="wrap">
-            <Avatar name={userName} bg="blue.500" /* src={user.avatar_url || undefined} */ />
-            <Box>
-              <Heading size="sm" color={headingColor}>{userName}</Heading>
-              <Text fontSize="sm" color={secondaryTextColor}>{userEmail}</Text>
-            </Box>
-          </Flex>
-        </Flex>
-      </CardHeader>
-      <CardBody py={4}>
-        <Text fontSize="sm">
-          ID: {user?.id || 'N/A'}
-        </Text>
-        {/* Display age if available */}
-        {user?.idade !== null && user?.idade !== undefined && (
-          <Text fontSize="sm">Idade: {user.idade}</Text>
-        )}
-        {/* Display description if available */}
-        {user?.descricao && (
-           <Text fontSize="sm" mt={2}>Descrição: {user.descricao}</Text>
-        )}
-      </CardBody>
+      <Flex align="center" mb={4}>
+        <Avatar name={user.nome} size="md" bg="brand.600" color="white" mr={4} />
+        <Box overflow="hidden"> {/* Prevent text overflow */}
+          <Heading size="sm" noOfLines={1} title={user.nome}>{user.nome || 'Identidade Desconhecida'}</Heading>
+          <Text fontSize="xs" color={subtleTextColor} noOfLines={1} title={user.email}>{user.email || 'Ponto de Acesso Indefinido'}</Text>
+        </Box>
+      </Flex>
 
-      <CardFooter
-        justify="flex-end" 
-        flexWrap="wrap"
-        borderTopWidth="1px"
-        borderColor={borderColor}
-        pt={3} 
-        pb={3} 
-        px={4} 
-        gap={2} 
-      >
-        <Button 
-          size="sm" 
-          variant="ghost" 
-          leftIcon={<FiEdit />} 
-          onClick={onEdit} 
-          colorScheme="blue"
-          _hover={{ bg: 'gray.600' }} // Adjust hover for dark mode
-        >
-          Editar
-        </Button>
-        <IconButton 
-          size="sm"
-          variant="ghost"
-          colorScheme="red"
-          aria-label="Excluir usuário"
-          icon={<FiTrash2 />} 
-          onClick={onDelete}
-          _hover={{ bg: 'red.900', color: 'white' }} // Adjust hover for dark mode
-        />
-      </CardFooter>
-    </Card>
+      <Box fontSize="sm" color={textColor} mb={4}>
+        <Text fontSize="xs" color={subtleTextColor}>ID: {user.id || 'N/A'}</Text>
+        <Text fontSize="xs" color={subtleTextColor}>Idade: {user.idade !== undefined ? user.idade : 'N/A'}</Text>
+      </Box>
+
+      <Flex justify="flex-end" gap={2}>
+        <Tooltip label="Editar Identidade" placement="top" bg="gray.600" color="white" fontSize="xs">
+          <IconButton 
+            aria-label="Editar usuário" 
+            icon={<EditIcon />} 
+            size="sm" 
+            variant="ghost" 
+            color={highlightColor}
+            onClick={onEdit}
+            _hover={{ 
+              bg: 'rgba(45, 212, 247, 0.1)',
+              color: 'brand.300',
+              transform: 'scale(1.1)'
+            }}
+          />
+        </Tooltip>
+        <Tooltip label="Excluir Identidade" placement="top" bg="red.600" color="white" fontSize="xs">
+          <IconButton 
+            aria-label="Excluir usuário" 
+            icon={<DeleteIcon />} 
+            size="sm" 
+            variant="ghost" 
+            color="red.300"
+            onClick={onDelete}
+            _hover={{ 
+              bg: 'rgba(117, 0, 0, 0.2)',
+              color: 'red.200',
+              transform: 'scale(1.1)'
+            }}
+          />
+        </Tooltip>
+      </Flex>
+    </Box>
   );
 };
 

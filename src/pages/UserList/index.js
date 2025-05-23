@@ -1,172 +1,167 @@
 import React, { useState, useEffect } from 'react';
+import { Alert, AlertIcon } from '@chakra-ui/react';
 import { 
-  Box, Heading, SimpleGrid, Button, useDisclosure, Spinner, Center, Alert, AlertIcon, 
-  Input, InputGroup, InputLeftElement, Icon, Flex, Text 
+  Box, Heading, SimpleGrid, Input, InputGroup, InputLeftElement, 
+  Button, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, 
+  ModalCloseButton, ModalBody, ModalFooter, Text, VStack, useToast, Center, Spinner, Flex, Spacer // Added Flex, Spacer
 } from '@chakra-ui/react';
-// Removed FiPlus import as the Add button is removed
-import { FiSearch } from 'react-icons/fi'; 
-import { useNavigate } from 'react-router-dom';
-import userService from '../../services/users'; 
-import { useAuth } from '../../contexts/AuthContext';
-import Layout from '../../components/Layout'; 
-import UserCard from '../../components/UserCard'; 
-import UserForm from '../../components/UserForm'; // Keep UserForm for editing
+import { SearchIcon, AddIcon } from '@chakra-ui/icons'; // Using Chakra icons
+import UserCard from '../../components/UserCard';
+import UserForm from '../../components/UserForm';
+import { userService } from '../../services/users'; // Corrected import
+import { motion } from 'framer-motion'; // For list animations
+
+// Motion component for list items
+const MotionBox = motion(Box);
 
 const UserList = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  // Keep disclosure controls for the Edit modal
-  const { isOpen, onOpen, onClose } = useDisclosure(); 
-  const [currentUser, setCurrentUser] = useState(null); // For editing
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  // Removed Add User modal state as functionality was removed
+  const toast = useToast();
 
-  // Fetch users on component mount
+  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user) {
-        navigate('/login'); 
-        return;
-      }
-      setLoading(true);
+      setIsLoading(true);
       setError('');
       try {
-        const { data, error: fetchError } = await userService.getAllUsers();
-        if (fetchError) throw fetchError;
+        const data = await userService.getUsers();
         setUsers(data || []);
-        setFilteredUsers(data || []); 
+        setFilteredUsers(data || []);
       } catch (err) {
-        console.error("Error fetching users:", err);
-        setError('Falha ao carregar usuários. Tente novamente.');
+        console.error("Failed to fetch users:", err);
+        setError('Falha ao carregar usuários da rede.');
+        toast({ title: "Erro", description: 'Não foi possível carregar os usuários.', status: "error", duration: 5000, isClosable: true });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
-
     fetchUsers();
-  }, [user, navigate]);
+  }, [toast]);
 
   // Filter users based on search term
   useEffect(() => {
-    if (!searchTerm) {
-      setFilteredUsers(users);
-    } else {
-      setFilteredUsers(
-        users.filter(u => 
-          u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    }
+    const results = users.filter(user =>
+      user.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(results);
   }, [searchTerm, users]);
 
-  // Removed handleAddUser function
-
-  const handleEditUser = (userToEdit) => {
-    setCurrentUser(userToEdit);
-    onOpen(); // Open modal with user data for editing
+  // Handle user edit
+  const handleEdit = (user) => {
+    setSelectedUser(user);
+    onEditOpen();
   };
 
-  const handleDeleteUser = async (userId) => {
-    // Keep delete functionality as is
-    if (window.confirm('Tem certeza que deseja excluir este usuário? A ação não pode ser desfeita.')) {
-      try {
-        const { error: deleteError } = await userService.deleteUserAccount(userId);
-        if (deleteError) throw deleteError;
-        
-        const updatedUsers = users.filter(u => u.id !== userId);
-        setUsers(updatedUsers);
-        setFilteredUsers(updatedUsers);
-      } catch (err) {
-        console.error("Error deleting user:", err);
-        setError('Falha ao excluir usuário.');
-      }
+  // Handle user delete
+  const handleDelete = async (userId) => {
+    // Confirmation dialog could be added here
+    try {
+      await userService.deleteUser(userId);
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      toast({ title: "Usuário Excluído", description: "Identidade removida do sistema.", status: "success", duration: 3000, isClosable: true });
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+      toast({ title: "Erro", description: "Falha ao excluir identidade.", status: "error", duration: 5000, isClosable: true });
     }
   };
 
-  // Callback for when the edit form is successfully submitted
-  const handleFormSuccess = (updatedUser) => {
-    // Only handle editing case now
-    const updatedList = users.map(u => u.id === updatedUser.id ? updatedUser : u);
-    setUsers(updatedList);
-    setFilteredUsers(updatedList);
-    onClose(); // Close modal
+  // Handle save from UserForm (for editing)
+  const handleSaveUser = (updatedUser) => {
+    setUsers(prevUsers => 
+      prevUsers.map(user => user.id === updatedUser.id ? updatedUser : user)
+    );
+    onEditClose(); // Close edit modal
+    toast({ title: "Usuário Atualizado", description: "Dados da identidade modificados.", status: "info", duration: 3000, isClosable: true });
   };
 
-  // Check for duplicated Header: Ensure Layout is applied ONLY in App.js for this route
-  // This component should NOT render Layout itself.
-
   return (
-    // Removed Layout wrapper from here, assuming it's applied in App.js
     <Box>
-      <Heading as="h1" size="xl" mb={6}>
-        Lista de Usuários
-      </Heading>
-
-      {error && (
-        <Alert status="error" mb={4} borderRadius="md">
-          <AlertIcon />
-          {error}
-        </Alert>
-      )}
-
-      {/* Search Bar Row - Removed Add Button */}
-      <Flex 
-        mb={6} 
-        direction={{ base: 'column', md: 'row' }} 
-        align={{ md: 'center' }} 
-        // Justify content to start as there's only one item now
-        justify="flex-start" 
-        gap={4} 
-      >
-        <InputGroup maxW={{ base: 'full', md: 'sm' }}>
-          <InputLeftElement pointerEvents="none">
-            <Icon as={FiSearch} color="gray.400" />
-          </InputLeftElement>
-          <Input 
-            placeholder="Buscar por nome ou email..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            focusBorderColor="blue.500"
-            bg="gray.700" // Ensure input background matches dark theme
-          />
-        </InputGroup>
-        {/* Removed the Add User Button */}
+      <Flex mb={8} alignItems="center">
+        <Heading as="h2" size="lg" fontFamily="heading" className="glitch" data-text="Usuários Registrados">
+          Usuários Registrados
+        </Heading>
+        <Spacer />
+        {/* Add User button removed as requested */}
       </Flex>
 
-      {loading ? (
-        <Center py={10}>
-          <Spinner size="xl" color="blue.300" />
+      <InputGroup mb={8} maxW="lg">
+        <InputLeftElement pointerEvents="none">
+          <SearchIcon color="gray.500" />
+        </InputLeftElement>
+        <Input 
+          type="text"
+          placeholder="Buscar por nome ou email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          // Style inherited from theme
+        />
+      </InputGroup>
+
+      {isLoading && (
+        <Center p={10}>
+          <Spinner size="xl" color="brand.400" thickness='4px' speed='0.65s' emptyColor='gray.700' />
         </Center>
-      ) : (
+      )}
+
+      {error && (
+         <Alert status="error" variant="solid" bg="red.700" color="white">
+            <AlertIcon color="white" />
+            {error}
+          </Alert>
+      )}
+
+      {!isLoading && !error && (
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-          {filteredUsers.length > 0 ? (
-            filteredUsers.map((u) => (
+          {filteredUsers.map((user, index) => (
+            <MotionBox
+              key={user.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }} // Staggered animation
+            >
               <UserCard 
-                key={u.id} 
-                user={u} 
-                onEdit={() => handleEditUser(u)} 
-                onDelete={() => handleDeleteUser(u.id)} 
+                user={user} 
+                onEdit={() => handleEdit(user)} 
+                onDelete={() => handleDelete(user.id)} 
               />
-            ))
-          ) : (
-            <Text>Nenhum usuário encontrado.</Text> 
-          )}
+            </MotionBox>
+          ))}
         </SimpleGrid>
       )}
 
-      {/* Modal for Editing User (isOpen is controlled by handleEditUser) */}
-      {currentUser && (
-        <UserForm 
-          isOpen={isOpen} 
-          onClose={onClose} 
-          currentUser={currentUser} 
-          onSuccess={handleFormSuccess} 
-        />
+      {!isLoading && !error && filteredUsers.length === 0 && (
+        <Text textAlign="center" color="gray.500" mt={10}>Nenhuma identidade encontrada com os critérios atuais.</Text>
       )}
+
+      {/* Edit User Modal */}
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl" isCentered>
+        <ModalOverlay bg="blackAlpha.800" backdropFilter="blur(5px)"/>
+        <ModalContent> 
+          <ModalHeader>Editar Identidade</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            {selectedUser && (
+              <UserForm 
+                userToEdit={selectedUser} 
+                onSave={handleSaveUser} 
+                onCancel={onEditClose} 
+              />
+            )}
+          </ModalBody>
+          {/* Footer removed as buttons are inside UserForm */}
+        </ModalContent>
+      </Modal>
+
+      {/* Add User Modal Removed */}
+
     </Box>
   );
 };

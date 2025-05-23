@@ -1,31 +1,34 @@
 import React from 'react';
-import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
-import Header from '../Header'; // Assuming Header is one level up
-import Footer from '../Footer'; // Assuming Footer is one level up
+import { Box, Container, Flex } from '@chakra-ui/react';
+import Header from '../Header'; // Assuming Header is updated/will be updated
+import Footer from '../Footer'; // Assuming Footer is updated/will be updated
+import { motion } from 'framer-motion'; // For page transitions
+
+// Motion component for fade-in effect
+const MotionContainer = motion(Container);
 
 const Layout = ({ children }) => {
-  const bgColor = useColorModeValue('gray.50', 'gray.900');
-  const textColor = useColorModeValue('gray.800', 'whiteAlpha.900');
+  // Use theme colors directly
+  const bgColor = 'blackwall.background'; // #0a0a0a
+  const textColor = 'blackwall.text'; // #c0c0c0
 
   return (
-    <Flex 
-      direction="column" 
-      minH="100vh" 
-      bg={bgColor} 
-      color={textColor}
-    >
+    <Flex direction="column" minH="100vh" bg={bgColor} color={textColor} className="subtle-background">
       <Header />
-      <Box 
-        as="main" // Use semantic main tag
-        flex="1" 
-        py={{ base: 6, md: 8 }} // Responsive padding
-        px={{ base: 4, md: 6, lg: 8 }} // Responsive padding
-        w="full" 
-        maxW="container.xl" // Limit content width for larger screens
-        mx="auto" // Center content
+      <MotionContainer 
+        as="main" 
+        maxW="container.xl" 
+        py={{ base: 6, md: 8 }} 
+        px={{ base: 4, md: 6 }} 
+        flex="1"
+        // Apply fade-in transition to main content area
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
       >
         {children}
-      </Box>
+      </MotionContainer>
       <Footer />
     </Flex>
   );

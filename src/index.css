@@ -1,3 +1,8 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,9 +10,124 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Base background and text color will be set by Chakra's global styles */
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* --- Glitch Effect --- */
+@keyframes glitch-skew {
+  0% {
+    transform: skew(0deg);
+  }
+  5% {
+    transform: skew(3deg);
+  }
+  10% {
+    transform: skew(-3deg);
+  }
+  15% {
+    transform: skew(0deg);
+  }
+  100% {
+    transform: skew(0deg);
+  }
+}
+
+@keyframes glitch-text {
+  0% {
+    text-shadow: 1px 0 0 #750000, -1px 0 0 #2dd4f7;
+    clip-path: inset(10% 0 80% 0);
+  }
+  5% {
+    text-shadow: -1px 0 0 #750000, 1px 0 0 #2dd4f7;
+    clip-path: inset(30% 0 50% 0);
+  }
+  10% {
+    text-shadow: 1px 0 0 #750000, -1px 0 0 #2dd4f7;
+    clip-path: inset(70% 0 10% 0);
+  }
+  15% {
+    text-shadow: -1px 0 0 #750000, 1px 0 0 #2dd4f7;
+    clip-path: inset(45% 0 35% 0);
+  }
+  20% {
+     text-shadow: 1px 0 0 #750000, -1px 0 0 #2dd4f7;
+     clip-path: inset(90% 0 5% 0);
+  }
+  25% {
+    text-shadow: none;
+    clip-path: inset(50% 0 50% 0);
+  }
+  100% {
+    text-shadow: none;
+     clip-path: inset(50% 0 50% 0);
+  }
+}
+
+.glitch {
+  position: relative;
+  animation: glitch-skew 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1s infinite;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit; /* Match background */
+}
+
+.glitch::before {
+  left: 2px;
+  text-shadow: -2px 0 #750000; /* Use danger color */
+  clip-path: inset(25% 0 55% 0);
+  animation: glitch-text 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1.1s infinite reverse;
+}
+
+.glitch::after {
+  left: -2px;
+  text-shadow: -2px 0 #2dd4f7, 2px 2px #750000; /* Use highlight and danger */
+  clip-path: inset(65% 0 15% 0);
+  animation: glitch-text 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1s infinite reverse;
+}
+
+/* --- Subtle Background Animation (Example) --- */
+@keyframes subtle-scanlines {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100px; } /* Adjust distance for speed */
+}
+
+.subtle-background {
+  position: relative;
+  overflow: hidden; /* Contain pseudo-elements */
+}
+
+.subtle-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(rgba(18, 18, 18, 0) 50%, rgba(18, 18, 18, 0.1) 50%),
+                    linear-gradient(90deg, rgba(18, 18, 18, 0.1) 1px, transparent 1px);
+  background-size: 100% 4px, 3px 100%; /* Adjust line thickness/spacing */
+  opacity: 0.1; /* Make it very subtle */
+  pointer-events: none;
+  z-index: 0; /* Behind content */
+  /* animation: subtle-scanlines 5s linear infinite; */ /* Optional: animate scanlines */
+}
+
+/* Ensure content is above the background */
+.subtle-background > * {
+  position: relative;
+  z-index: 1;
+}
+

@@ -1,161 +1,131 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, 
-  Button, FormControl, FormLabel, Input, VStack, useToast, Alert, AlertIcon, Text // Added Text here
+  VStack, FormControl, FormLabel, Input, Button, useToast, NumberInput, 
+  NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper, Flex, Spacer
 } from '@chakra-ui/react';
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
-// Import the default export userService
-import userService from '../../services/users'; 
+import { userService } from '../../services/users'; // Corrected import
 
-// Validation Schema using Yup
-const validationSchema = Yup.object({
-  nome: Yup.string().required('Nome é obrigatório'),
-  email: Yup.string().email('Email inválido').required('Email é obrigatório'),
-  // Add other fields as necessary, e.g., password for creation
-  // password: Yup.string().when('isEditing', {
-  //   is: false,
-  //   then: Yup.string().required('Senha é obrigatória'),
-  //   otherwise: Yup.string(),
-  // }),
-});
-
-const UserForm = ({ isOpen, onClose, currentUser, onSuccess }) => {
+const UserForm = ({ userToEdit, onSave, onCancel }) => {
+  const [formData, setFormData] = useState({ nome: '', email: '', idade: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
-  const [error, setError] = useState('');
-  const isEditing = Boolean(currentUser);
 
-  const formik = useFormik({
-    initialValues: {
-      nome: '',
-      email: '',
-      // Add other fields here
-    },
-    validationSchema: validationSchema,
-    onSubmit: async (values, { setSubmitting, resetForm }) => {
-      setError('');
-      setSubmitting(true);
-      try {
-        let resultData; // Variable to hold the user data from the response
-        if (isEditing) {
-          // Call userService.updateUserProfile
-          const { data, error: updateError } = await userService.updateUserProfile(currentUser.id, values);
-          if (updateError) throw updateError;
-          // Assuming the update function might not return the full user, 
-          // we merge the updated values with the existing currentUser for the callback
-          resultData = { ...currentUser, ...values }; 
-        } else {
-          // Call userService.createUserProfile
-          // We need the user ID from Auth context for this, which isn't directly available here.
-          // Assuming the createUserProfile in the service handles ID association or is adjusted.
-          // For now, let's assume the service function is adapted or we pass necessary info.
-          // *** This might need adjustment based on how createUserProfile expects data ***
-          // Let's assume it expects 'nome' and 'email' and returns the created user with ID.
-          const { data, error: createError } = await userService.createUserProfile(values); 
-          if (createError) throw createError;
-          // Assuming 'data' contains the newly created user object from the database
-          resultData = data && data.length > 0 ? data[0] : values; // Use returned data if available
-        }
-        
-        toast({
-          title: `Usuário ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        onSuccess(resultData); // Pass the result back
-        resetForm();
-        onClose(); // Close modal on success
-
-      } catch (err) {
-        console.error("Form submission error:", err);
-        setError(err.message || `Erro ao ${isEditing ? 'atualizar' : 'criar'} usuário. Tente novamente.`);
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    enableReinitialize: true, // Reinitialize form when currentUser changes
-  });
-
-  // Effect to set form values when editing
   useEffect(() => {
-    if (isEditing && currentUser) {
-      formik.setValues({
-        nome: currentUser.nome || '',
-        email: currentUser.email || '',
-        // Set other fields from currentUser
+    if (userToEdit) {
+      setFormData({
+        nome: userToEdit.nome || '',
+        email: userToEdit.email || '',
+        idade: userToEdit.idade !== undefined ? String(userToEdit.idade) : '',
       });
     } else {
-      formik.resetForm(); // Reset form if adding or currentUser is null
+      // Reset form if no user is being edited (though adding is removed)
+      setFormData({ nome: '', email: '', idade: '' });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, isEditing]); // Rerun when currentUser or isEditing changes
+  }, [userToEdit]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAgeChange = (valueString) => {
+    setFormData(prev => ({ ...prev, idade: valueString }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const ageNumber = parseInt(formData.idade, 10);
+      if (isNaN(ageNumber)) {
+        throw new Error("Idade deve ser um número válido.");
+      }
+      const dataToSave = {
+        nome: formData.nome,
+        // Email is likely not editable here, handled by Supabase Auth
+        idade: ageNumber,
+      };
+
+      let savedUser;
+      if (userToEdit) {
+        // Update existing user
+        savedUser = await userService.updateUser(userToEdit.id, dataToSave);
+        toast({ title: "Identidade Atualizada", status: "success", duration: 3000, isClosable: true });
+      } else {
+        // Add new user (Functionality removed from list, kept here for potential future use)
+        // savedUser = await userService.createUserProfile(dataToSave); // createUserProfile might need email/auth ID
+        // toast({ title: "Identidade Criada", status: "success", duration: 3000, isClosable: true });
+        throw new Error("Funcionalidade de adicionar usuário desativada.");
+      }
+      onSave(savedUser); // Pass updated/created user back
+    } catch (err) {
+      console.error("Failed to save user:", err);
+      toast({ title: "Erro ao Salvar", description: err.message || "Não foi possível salvar os dados.", status: "error", duration: 5000, isClosable: true });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={{ base: 4, md: 0 }}> {/* Add horizontal margin on mobile */}
-        <ModalHeader>{isEditing ? 'Editar Usuário' : 'Adicionar Novo Usuário'}</ModalHeader>
-        <ModalCloseButton />
-        <form onSubmit={formik.handleSubmit}>
-          <ModalBody pb={6}>
-            {error && (
-              <Alert status="error" mb={4} borderRadius="md">
-                <AlertIcon />
-                {error}
-              </Alert>
-            )}
-            <VStack spacing={4}>
-              <FormControl id="nome" isRequired isInvalid={formik.touched.nome && Boolean(formik.errors.nome)}>
-                <FormLabel>Nome</FormLabel>
-                <Input 
-                  name="nome"
-                  value={formik.values.nome}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  placeholder="Nome completo"
-                  focusBorderColor="blue.500"
-                />
-                {formik.touched.nome && formik.errors.nome && (
-                  <Text color="red.500" fontSize="sm">{formik.errors.nome}</Text> // Text is now imported
-                )}
-              </FormControl>
+    <form onSubmit={handleSubmit}>
+      <VStack spacing={4} align="stretch">
+        <FormControl id="nome-form" isRequired>
+          <FormLabel>Nome (Identificador)</FormLabel>
+          <Input 
+            name="nome"
+            value={formData.nome}
+            onChange={handleInputChange}
+            placeholder="Nome da identidade"
+          />
+        </FormControl>
 
-              <FormControl id="email" isRequired isInvalid={formik.touched.email && Boolean(formik.errors.email)}>
-                <FormLabel>Email</FormLabel>
-                <Input 
-                  name="email"
-                  type="email"
-                  value={formik.values.email}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  placeholder="email@exemplo.com"
-                  focusBorderColor="blue.500"
-                />
-                {formik.touched.email && formik.errors.email && (
-                  <Text color="red.500" fontSize="sm">{formik.errors.email}</Text> // Text is now imported
-                )}
-              </FormControl>
+        <FormControl id="email-form" isReadOnly> {/* Email usually read-only in profile edit */}
+          <FormLabel>Email (Ponto de Acesso)</FormLabel>
+          <Input 
+            name="email"
+            type="email"
+            value={formData.email}
+            isReadOnly
+            placeholder="ponto.acesso@dominio.net"
+            variant="filled" // Indicate read-only
+            bg="gray.800"
+            cursor="default"
+            borderColor="gray.700"
+          />
+        </FormControl>
 
-              {/* Add other form fields here following the same pattern */}
-              
-            </VStack>
-          </ModalBody>
+        <FormControl id="idade-form" isRequired>
+          <FormLabel>Idade (Registro)</FormLabel>
+          <NumberInput 
+            min={0} 
+            value={formData.idade} 
+            onChange={handleAgeChange}
+            focusBorderColor="brand.400"
+          >
+            <NumberInputField placeholder="Idade registrada" />
+            <NumberInputStepper>
+              <NumberIncrementStepper />
+              <NumberDecrementStepper />
+            </NumberInputStepper>
+          </NumberInput>
+        </FormControl>
 
-          <ModalFooter>
-            <Button onClick={onClose} mr={3} variant="ghost">Cancelar</Button>
-            <Button 
-              colorScheme="blue" 
-              type="submit" 
-              isLoading={formik.isSubmitting}
-              loadingText={isEditing ? 'Salvando...' : 'Criando...'}
-            >
-              {isEditing ? 'Salvar Alterações' : 'Criar Usuário'}
-            </Button>
-          </ModalFooter>
-        </form>
-      </ModalContent>
-    </Modal>
+        <Flex mt={6} gap={3} justify="flex-end">
+          <Button variant="ghost" onClick={onCancel} isDisabled={isLoading}>
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            colorScheme="brand" 
+            variant="solid"
+            isLoading={isLoading}
+            loadingText={userToEdit ? "Salvando..." : "Criando..."}
+          >
+            {userToEdit ? 'Salvar Alterações' : 'Criar Usuário'}
+          </Button>
+        </Flex>
+      </VStack>
+    </form>
   );
 };
 

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { Box, Alert, AlertIcon, VStack, FormControl, FormLabel, Input, Button, Text, Link as ChakraLink } from '@chakra-ui/react';
+import { 
+  Box, VStack, FormControl, FormLabel, Input, Button, Text, Link as ChakraLink, 
+  Alert, AlertIcon, Heading
+} from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import AuthLayout from '../../components/AuthLayout'; // Import the new layout
+import AuthLayout from '../../components/AuthLayout'; // Use the themed AuthLayout
 
 const Login = () => {
   const { login } = useAuth();
@@ -18,28 +21,30 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const { success, error: authError } = await login(email, password);
-
-      if (success) {
-        navigate('/profile'); // Redirect to profile or user list after login
-      } else {
-        setError(authError?.message || 'Credenciais inválidas. Verifique seu email e senha.');
+      const { error: loginError } = await login(email, password);
+      if (loginError) {
+        throw loginError;
       }
+      navigate('/users'); // Redirect to user list on successful login
     } catch (err) {
-      console.error("Login error:", err); // Log the full error for debugging
-      setError(err.message || 'Erro ao fazer login. Tente novamente mais tarde.');
+      console.error("Login error:", err);
+      // More thematic error message
+      setError(err.message || 'Falha na autenticação // Protocolo de segurança rejeitado.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    // Use the AuthLayout, passing the title
-    <AuthLayout title="Acessar sua Conta">
-      <Box width="100%"> {/* Ensure Box takes full width within AuthLayout's centered container */}
+    <AuthLayout title="NeoCRUD // BLACKWALL PROTOCOL">
+      <VStack spacing={4} align="stretch" width="100%">
+        <Text textAlign="center" fontSize="sm" color="gray.400" mb={6}>
+          “Você está prestes a acessar uma camada restrita do sistema. NeoCRUD opera na periferia da rede, onde o controle de dados ultrapassa os limites da segurança comum. Modifique, insira ou exclua identidades — mas lembre-se: além desta interface, a vigilância observa.”
+        </Text>
+
         {error && (
-          <Alert status="error" borderRadius="md" mb={4}> {/* Add margin bottom */}
-            <AlertIcon />
+          <Alert status="error" borderRadius="md" variant="solid" bg="red.700" color="white">
+            <AlertIcon color="white" />
             {error}
           </Alert>
         )}
@@ -47,49 +52,49 @@ const Login = () => {
         <form onSubmit={handleSubmit}>
           <VStack spacing={4}>
             <FormControl id="email" isRequired>
-              <FormLabel>Email</FormLabel>
+              {/* Thematic Label */}
+              <FormLabel fontFamily="body" fontWeight="600">Ponto de Acesso</FormLabel>
               <Input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu.email@exemplo.com"
-                // Use focusBorderColor for better visibility in dark mode
-                focusBorderColor="blue.500" 
+                placeholder="interface@rede.segura" // Thematic Placeholder
               />
             </FormControl>
             
             <FormControl id="password" isRequired>
-              <FormLabel>Senha</FormLabel>
+              {/* Thematic Label */}
+              <FormLabel fontFamily="body" fontWeight="600">Chave de Acesso</FormLabel>
               <Input 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Sua senha"
-                focusBorderColor="blue.500"
+                placeholder="||||||||" // Thematic Placeholder
               />
             </FormControl>
             
             <Button 
               type="submit" 
-              colorScheme="blue" 
+              colorScheme="brand" 
+              variant="solid"
               width="full" 
-              mt={4} // Add margin top
+              mt={4}
               isLoading={isLoading}
-              loadingText="Entrando..."
+              loadingText="Verificando Acesso..."
             >
-              Entrar
+              Autorizar Acesso
             </Button>
           </VStack>
         </form>
         
-        <Text mt={6} textAlign="center">
-          Não tem uma conta?{' '}
-          {/* Use ChakraLink for styling consistency, wrapping RouterLink */}
-          <ChakraLink as={RouterLink} to="/register" color="blue.500" fontWeight="medium">
-            Registre-se
+        <Text mt={6} textAlign="center" fontSize="sm">
+          {/* Thematic Text */}
+          Acesso Negado?{' '}
+          <ChakraLink as={RouterLink} to="/register" color="brand.400" fontWeight="600">
+            Forjar Identidade
           </ChakraLink>
         </Text>
-      </Box>
+      </VStack>
     </AuthLayout>
   );
 };

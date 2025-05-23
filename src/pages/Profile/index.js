@@ -1,165 +1,275 @@
-import React, { useState } from 'react'; 
-import {
-  Box, Heading, Text, VStack, Avatar, Spinner, Center, Alert, AlertIcon, Button,
-  useDisclosure, 
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  Flex // Flex import is kept
+import React, { useState, useEffect } from 'react';
+import { Alert, AlertIcon } from '@chakra-ui/react';
+import { 
+  Box, Heading, Text, VStack, Button, FormControl, FormLabel, Input, 
+  useToast, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, 
+  AlertDialogContent, AlertDialogOverlay, Spinner, Center, Flex, Avatar // Added Flex, Avatar
 } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-// Removed Layout import from here
+import { userService } from '../../services/users'; // Corrected import
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion'; // For animations
+
+// Motion component
+const MotionBox = motion(Box);
 
 const Profile = () => {
-  const { user, profile, loading, error: authError, logout, deleteAccount } = useAuth();
+  const { user, logout } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ nome: '', email: '', idade: '' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const cancelRef = React.useRef();
+  const toast = useToast();
   const navigate = useNavigate();
-  // Use dark mode values directly
-  const cardBg = 'gray.700'; 
-  const borderColor = 'gray.600'; 
-  const textColor = 'whiteAlpha.900';
-  const headingColor = 'whiteAlpha.900';
-  const secondaryTextColor = 'gray.400';
 
-  // State and controls for delete confirmation modal
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
-  const handleDeleteAccountConfirm = async () => {
-    setIsDeleting(true);
-    try {
-      const { success, error } = await deleteAccount();
-      if (success) {
-        navigate('/login'); 
-      } else {
-        console.error('Delete account failed:', error);
-        onDeleteClose(); 
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      setIsLoading(true);
+      setError('');
+      try {
+        // Assuming userService.getUserById exists or similar
+        // We might need to fetch based on the authenticated user's ID
+        const data = await userService.getUserById(user.id); 
+        if (data) {
+          setProfile(data);
+          setFormData({ nome: data.nome || '', email: data.email || '', idade: data.idade || '' });
+        } else {
+           setError('Perfil não encontrado no sistema.');
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+        setError('Falha ao carregar dados do perfil.');
+        toast({ title: "Erro", description: 'Não foi possível carregar o perfil.', status: "error", duration: 5000, isClosable: true });
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Delete account failed:', error);
-      onDeleteClose();
+    };
+    fetchProfile();
+  }, [user, toast]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+   const handleAgeChange = (valueString) => {
+    setFormData(prev => ({ ...prev, idade: valueString }));
+  };
+
+  const handleEditToggle = () => {
+    if (isEditing && profile) {
+      // Reset form data if canceling edit
+      setFormData({ nome: profile.nome || '', email: profile.email || '', idade: profile.idade || '' });
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile) return;
+    setIsSaving(true);
+    setError('');
+    try {
+      const updatedData = { 
+        ...profile, // Keep existing data like id
+        nome: formData.nome,
+        // email: formData.email, // Usually email is not editable directly here
+        idade: parseInt(formData.idade, 10) || profile.idade, // Ensure age is a number
+      };
+      const updatedProfile = await userService.updateUser(profile.id, updatedData);
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      toast({ title: "Perfil Atualizado", description: "Suas informações foram salvas.", status: "success", duration: 3000, isClosable: true });
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      setError('Falha ao salvar alterações no perfil.');
+      toast({ title: "Erro", description: 'Não foi possível salvar o perfil.', status: "error", duration: 5000, isClosable: true });
     } finally {
-      setIsDeleting(false);
+      setIsSaving(false);
     }
   };
 
-  // Loading state handled within the Layout in App.js now
-  // if (loading) { ... }
+  const handleDeleteAccount = async () => {
+    setIsAlertOpen(false); // Close alert first
+    if (!user) return;
+    // Add loading state for deletion?
+    try {
+      // 1. Delete user profile data from 'usuarios' table
+      await userService.deleteUser(user.id);
+      // 2. Log out the user
+      await logout();
+      // 3. Optionally, delete the user from Supabase Auth (requires admin privileges or specific setup)
+      // This part is complex and might need backend/function handling.
+      // For now, we just delete the profile data and log out.
+      toast({ title: "Conta Excluída", description: "Sua conta e dados foram removidos.", status: "warning", duration: 5000, isClosable: true });
+      navigate('/login'); // Redirect to login after deletion
+    } catch (err) {
+      console.error("Failed to delete account:", err);
+      toast({ title: "Erro", description: 'Falha ao excluir a conta.', status: "error", duration: 5000, isClosable: true });
+    }
+  };
 
-  // Auth check also handled by ProtectedRoute in App.js
-  // if (authError || !user) { ... }
+  if (isLoading) {
+    return (
+      <Center p={10}>
+        <Spinner size="xl" color="brand.400" thickness='4px' speed='0.65s' emptyColor='gray.700' />
+      </Center>
+    );
+  }
 
-  // Assume user and profile are available due to ProtectedRoute
-  const displayEmail = user?.email || 'N/A';
-  const displayName = profile?.nome || user?.user_metadata?.nome || 'Nome não definido';
-  const displayAge = profile?.idade !== null && profile?.idade !== undefined ? profile.idade : 'Idade não definida';
-  const displayDescription = profile?.descricao || 'Sem descrição';
+  if (error && !profile) {
+    return (
+      <Alert status="error" variant="solid" bg="red.700" color="white">
+        <AlertIcon color="white" />
+        {error}
+      </Alert>
+    );
+  }
 
-  // Removed the Layout wrapper from the return statement
+  if (!profile) {
+    // This case might happen briefly or if fetch fails without error state set properly
+    return <Text>Carregando perfil...</Text>; 
+  }
+
   return (
-    <Box>
-      <Heading as="h1" size="xl" mb={6} color={headingColor}>
-        Meu Perfil
+    <MotionBox
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      maxW="container.md" // Limit width for profile page
+      mx="auto"
+    >
+      <Heading as="h2" size="lg" mb={8} fontFamily="heading" className="glitch" data-text="Perfil do Usuário">
+        Perfil do Usuário
       </Heading>
 
-      {authError && (
-        <Alert status="error" mb={4} borderRadius="md">
-          <AlertIcon />
-          {authError.message || 'Ocorreu um erro na autenticação.'}
-        </Alert>
+      {error && (
+         <Alert status="error" variant="solid" bg="red.700" color="white" mb={4}>
+            <AlertIcon color="white" />
+            {error}
+          </Alert>
       )}
 
-      <Box 
-        bg={cardBg} 
-        p={{ base: 4, md: 6 }} 
-        borderRadius="lg" 
-        borderWidth="1px"
-        borderColor={borderColor}
-        boxShadow="md"
-        color={textColor}
-      >
-        <VStack spacing={5} align="start"> 
-          <Avatar 
-            size="xl" 
-            name={displayName} 
-            mb={4}
-            bg="blue.500" 
-          />
-          <Box>
-            <Heading as="h2" size="md" mb={1} color={headingColor}>Nome:</Heading>
-            <Text fontSize="lg">{displayName}</Text>
-          </Box>
-          <Box>
-            <Heading as="h2" size="md" mb={1} color={headingColor}>Email:</Heading>
-            <Text fontSize="lg">{displayEmail}</Text>
-          </Box>
-           <Box>
-            <Heading as="h2" size="md" mb={1} color={headingColor}>Idade:</Heading>
-            <Text fontSize="lg">{displayAge}</Text>
-          </Box>
-           <Box>
-            <Heading as="h2" size="md" mb={1} color={headingColor}>Descrição:</Heading>
-            <Text fontSize="lg">{displayDescription}</Text>
-          </Box>
-          <Box>
-            <Heading as="h2" size="md" mb={1} color={headingColor}>ID do Usuário:</Heading>
-            <Text fontSize="sm" color={secondaryTextColor}>{user?.id || 'N/A'}</Text> 
-          </Box>
-          
-          {/* Action Buttons */}
-          <Flex direction={{ base: 'column', sm: 'row' }} gap={3} mt={6} w="full"> 
+      <Box bg="blackwall.panel" p={6} borderRadius="md" borderWidth="1px" borderColor="gray.700">
+        <VStack spacing={4} align="stretch">
+          <Flex align="center" gap={4} mb={4}>
+             <Avatar name={profile.nome} size="lg" bg="brand.600" color="white" />
+             <Box>
+                <Heading size="md">{profile.nome}</Heading>
+                <Text color="gray.400">{profile.email}</Text>
+             </Box>
+          </Flex>
+
+          <FormControl id="nome" isReadOnly={!isEditing}>
+            <FormLabel>Nome</FormLabel>
+            <Input 
+              type="text" 
+              name="nome"
+              value={formData.nome}
+              onChange={handleInputChange}
+              isReadOnly={!isEditing}
+              variant={isEditing ? "outline" : "filled"}
+              bg={!isEditing ? "gray.800" : undefined}
+              _readOnly={{ bg: 'gray.800', cursor: 'default', borderColor: 'gray.700' }}
+            />
+          </FormControl>
+
+          <FormControl id="email" isReadOnly>
+            <FormLabel>Email (Ponto de Acesso)</FormLabel>
+            <Input 
+              type="email" 
+              name="email"
+              value={formData.email}
+              isReadOnly // Email usually not editable
+              variant="filled"
+              bg="gray.800"
+              cursor="default"
+              borderColor="gray.700"
+            />
+          </FormControl>
+
+          <FormControl id="idade" isReadOnly={!isEditing}>
+            <FormLabel>Idade</FormLabel>
+             <Input 
+              type="number" 
+              name="idade"
+              value={formData.idade}
+              onChange={handleInputChange} // Use standard input change for simplicity here
+              isReadOnly={!isEditing}
+              variant={isEditing ? "outline" : "filled"}
+              bg={!isEditing ? "gray.800" : undefined}
+               _readOnly={{ bg: 'gray.800', cursor: 'default', borderColor: 'gray.700' }}
+            />
+          </FormControl>
+
+          <Flex justify="space-between" mt={6} direction={{ base: 'column', md: 'row' }} gap={4}>
             <Button 
-              colorScheme="red" 
-              variant="solid" 
-              onClick={handleLogout}
-              flex={{ base: '1', sm: 'auto' }} 
+              colorScheme="brand" 
+              variant={isEditing ? "ghost" : "outline"}
+              onClick={handleEditToggle}
             >
-              Sair (Logout)
+              {isEditing ? 'Cancelar Edição' : 'Editar Perfil'}
             </Button>
-            <Button 
-              colorScheme="red" 
-              variant="outline" 
-              onClick={onDeleteOpen} 
-              flex={{ base: '1', sm: 'auto' }}
-            >
-              Excluir Conta
-            </Button>
+            
+            {isEditing && (
+              <Button 
+                colorScheme="brand" 
+                variant="solid"
+                onClick={handleSaveProfile}
+                isLoading={isSaving}
+                loadingText="Salvando..."
+              >
+                Salvar Alterações
+              </Button>
+            )}
+
+            {!isEditing && (
+              <Button 
+                colorScheme="red" 
+                variant="solid"
+                onClick={() => setIsAlertOpen(true)}
+              >
+                Excluir Conta
+              </Button>
+            )}
           </Flex>
         </VStack>
       </Box>
 
-      {/* Delete Account Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered>
-        <ModalOverlay />
-        <ModalContent bg="gray.700" color="whiteAlpha.900">
-          <ModalHeader>Confirmar Exclusão de Conta</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Text>Tem certeza que deseja excluir sua conta permanentemente? Esta ação não pode ser desfeita.</Text>
-          </ModalBody>
-          <ModalFooter gap={3}>
-            <Button variant="ghost" onClick={onDeleteClose} _hover={{ bg: 'gray.600' }}>
-              Cancelar
-            </Button>
-            <Button 
-              colorScheme="red" 
-              onClick={handleDeleteAccountConfirm} 
-              isLoading={isDeleting}
-              loadingText="Excluindo..."
-            >
-              Excluir Conta
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Box>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isAlertOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={() => setIsAlertOpen(false)}
+        isCentered
+      >
+        <AlertDialogOverlay bg="blackAlpha.800" backdropFilter="blur(5px)">
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Excluir Identidade Permanentemente?
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Esta ação não pode ser desfeita. Todos os seus dados associados serão removidos do sistema.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={() => setIsAlertOpen(false)} variant="ghost">
+                Cancelar
+              </Button>
+              <Button colorScheme="red" onClick={handleDeleteAccount} ml={3} variant="solid">
+                Excluir
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </MotionBox>
   );
 };
 
