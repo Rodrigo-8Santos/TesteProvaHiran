@@ -3,11 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Rajdhani:wght@400;600;700&display=swap');
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  /* Font family will be set by Chakra UI theme */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Base background and text color will be set by Chakra's global styles */
@@ -18,16 +19,16 @@ code {
     monospace;
 }
 
-/* --- Glitch Effect --- */
+/* --- Glitch Effect (Red Dominant) --- */
 @keyframes glitch-skew {
   0% {
     transform: skew(0deg);
   }
   5% {
-    transform: skew(3deg);
+    transform: skew(2deg);
   }
   10% {
-    transform: skew(-3deg);
+    transform: skew(-2deg);
   }
   15% {
     transform: skew(0deg);
@@ -37,25 +38,25 @@ code {
   }
 }
 
-@keyframes glitch-text {
+@keyframes glitch-text-red {
   0% {
-    text-shadow: 1px 0 0 #750000, -1px 0 0 #2dd4f7;
+    text-shadow: 1px 0 0 #750000, -1px 0 0 #ff073a; /* Dark Red / Bright Red */
     clip-path: inset(10% 0 80% 0);
   }
   5% {
-    text-shadow: -1px 0 0 #750000, 1px 0 0 #2dd4f7;
+    text-shadow: -1px 0 0 #750000, 1px 0 0 #ff073a;
     clip-path: inset(30% 0 50% 0);
   }
   10% {
-    text-shadow: 1px 0 0 #750000, -1px 0 0 #2dd4f7;
+    text-shadow: 1px 0 0 #750000, -1px 0 0 #ff073a;
     clip-path: inset(70% 0 10% 0);
   }
   15% {
-    text-shadow: -1px 0 0 #750000, 1px 0 0 #2dd4f7;
+    text-shadow: -1px 0 0 #750000, 1px 0 0 #ff073a;
     clip-path: inset(45% 0 35% 0);
   }
   20% {
-     text-shadow: 1px 0 0 #750000, -1px 0 0 #2dd4f7;
+     text-shadow: 1px 0 0 #750000, -1px 0 0 #ff073a;
      clip-path: inset(90% 0 5% 0);
   }
   25% {
@@ -70,7 +71,9 @@ code {
 
 .glitch {
   position: relative;
-  animation: glitch-skew 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1s infinite;
+  /* Use Orbitron font directly here if needed, or rely on Heading component */
+  /* font-family: 'Orbitron', sans-serif; */
+  animation: glitch-skew 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1s infinite;
 }
 
 .glitch::before,
@@ -82,28 +85,25 @@ code {
   width: 100%;
   height: 100%;
   background: inherit; /* Match background */
+  /* Ensure text color matches the main element if not overridden by text-shadow */
+  color: inherit; 
 }
 
 .glitch::before {
   left: 2px;
-  text-shadow: -2px 0 #750000; /* Use danger color */
+  text-shadow: -2px 0 #750000; /* Dark Red */
   clip-path: inset(25% 0 55% 0);
-  animation: glitch-text 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1.1s infinite reverse;
+  animation: glitch-text-red 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1.1s infinite reverse;
 }
 
 .glitch::after {
   left: -2px;
-  text-shadow: -2px 0 #2dd4f7, 2px 2px #750000; /* Use highlight and danger */
+  text-shadow: -2px 0 #ff073a, 2px 2px #750000; /* Bright Red / Dark Red */
   clip-path: inset(65% 0 15% 0);
-  animation: glitch-text 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1s infinite reverse;
+  animation: glitch-text-red 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 1s infinite reverse;
 }
 
-/* --- Subtle Background Animation (Example) --- */
-@keyframes subtle-scanlines {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 100px; } /* Adjust distance for speed */
-}
-
+/* --- Animated Background Grid/Noise --- */
 .subtle-background {
   position: relative;
   overflow: hidden; /* Contain pseudo-elements */
@@ -116,18 +116,51 @@ code {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: linear-gradient(rgba(18, 18, 18, 0) 50%, rgba(18, 18, 18, 0.1) 50%),
-                    linear-gradient(90deg, rgba(18, 18, 18, 0.1) 1px, transparent 1px);
-  background-size: 100% 4px, 3px 100%; /* Adjust line thickness/spacing */
-  opacity: 0.1; /* Make it very subtle */
+  /* Subtle grid lines */
+  background-image: 
+    linear-gradient(rgba(255, 7, 58, 0.03) 1px, transparent 1px), /* Faint horizontal red lines */
+    linear-gradient(90deg, rgba(255, 7, 58, 0.03) 1px, transparent 1px); /* Faint vertical red lines */
+  background-size: 30px 30px; /* Grid size */
+  /* opacity: 0.5; /* Adjust opacity - Controlled by animation now */
   pointer-events: none;
   z-index: 0; /* Behind content */
-  /* animation: subtle-scanlines 5s linear infinite; */ /* Optional: animate scanlines */
+  animation: animate-grid 10s linear infinite; /* Apply the animation */
 }
 
-/* Ensure content is above the background */
+/* Optional: Add noise texture overlay */
+.subtle-background::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNjUiIG51bU9jdGF2ZXM9IjMiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbmlpcykiLz48L3N2Zz4=');
+  opacity: 0.02; /* Very subtle noise */
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure content is above the background effects */
 .subtle-background > * {
   position: relative;
   z-index: 1;
 }
 
+
+
+
+/* --- Keyframes for Animated Grid --- */
+@keyframes animate-grid {
+  0% {
+    background-position: 0 0;
+    opacity: 0.4; /* Start slightly dimmer */
+  }
+  50% {
+    opacity: 0.6; /* Pulse brighter */
+  }
+  100% {
+    background-position: 0 60px; /* Move down twice the grid size */
+    opacity: 0.4; /* Back to dimmer */
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { Alert, AlertIcon } from '@chakra-ui/react';
 import { 
   Box, Heading, SimpleGrid, Input, InputGroup, InputLeftElement, 
@@ -21,40 +21,46 @@ const UserList = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refetchTrigger, setRefetchTrigger] = useState(0); // State to trigger refetch
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
-  // Removed Add User modal state as functionality was removed
   const toast = useToast();
 
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true);
-      setError('');
-      try {
-        const data = await userService.getUsers();
-        setUsers(data || []);
-        setFilteredUsers(data || []);
-      } catch (err) {
-        console.error("Failed to fetch users:", err);
-        setError('Falha ao carregar usuários da rede.');
-        toast({ title: "Erro", description: 'Não foi possível carregar os usuários.', status: "error", duration: 5000, isClosable: true });
-      } finally {
-        setIsLoading(false);
+  // Define fetchUsers using useCallback to avoid re-creation on every render
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const { data: usersData, error: fetchError } = await userService.getAllUsers();
+      if (fetchError) {
+        console.error("Failed to fetch users:", fetchError);
+        throw new Error('Falha ao carregar usuários da rede.');
       }
-    };
-    fetchUsers();
-  }, [toast]);
+      setUsers(usersData || []);
+      // Filtering will be handled by the other useEffect
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+      setError(err.message || 'Falha ao carregar usuários da rede.');
+      toast({ title: "Erro", description: err.message || 'Não foi possível carregar os usuários.', status: "error", duration: 5000, isClosable: true });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]); // Dependency: toast (stable)
 
-  // Filter users based on search term
+  // Fetch users on initial mount and when refetchTrigger changes
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers, refetchTrigger]); // Dependencies: fetchUsers, refetchTrigger
+
+  // Filter users based on search term or when users state changes
   useEffect(() => {
     const results = users.filter(user =>
       user.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredUsers(results);
-  }, [searchTerm, users]);
+  }, [searchTerm, users]); // Dependencies: searchTerm, users
 
-  // Handle user edit
+  // Handle user edit modal opening
   const handleEdit = (user) => {
     setSelectedUser(user);
     onEditOpen();
@@ -62,24 +68,50 @@ const UserList = () => {
 
   // Handle user delete
   const handleDelete = async (userId) => {
-    // Confirmation dialog could be added here
     try {
-      await userService.deleteUser(userId);
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
-      toast({ title: "Usuário Excluído", description: "Identidade removida do sistema.", status: "success", duration: 3000, isClosable: true });
+      // Call the updated service function which now returns { error }
+      const { error: deleteError } = await userService.deleteUserAccount(userId);
+
+      // Check if the deletion failed
+      if (deleteError) {
+        // If deletion failed, throw the error to be caught by the catch block
+        // This prevents triggering refetch or showing success messages
+        throw deleteError;
+      }
+
+      // If deletion was successful (no error thrown)
+      toast({ 
+        title: "Usuário Excluído", 
+        description: "Identidade removida com sucesso do sistema.", 
+        status: "success", 
+        duration: 3000, 
+        isClosable: true 
+      });
+      // Trigger refetch to get the updated list from the backend
+      setRefetchTrigger(prev => prev + 1);
+
     } catch (err) {
+      // Catch errors from deleteUserAccount or other unexpected issues
       console.error("Failed to delete user:", err);
-      toast({ title: "Erro", description: "Falha ao excluir identidade.", status: "error", duration: 5000, isClosable: true });
+      // Display a specific error message to the user
+      toast({ 
+        title: "Erro ao Excluir", 
+        description: err.message || "Falha ao excluir identidade. Verifique as permissões ou tente novamente.", 
+        status: "error", 
+        duration: 5000, 
+        isClosable: true 
+      });
+      // DO NOT trigger refetch here, as the deletion failed
     }
   };
 
   // Handle save from UserForm (for editing)
   const handleSaveUser = (updatedUser) => {
-    setUsers(prevUsers => 
-      prevUsers.map(user => user.id === updatedUser.id ? updatedUser : user)
-    );
+    // No need to update local state directly, refetch will handle it
     onEditClose(); // Close edit modal
     toast({ title: "Usuário Atualizado", description: "Dados da identidade modificados.", status: "info", duration: 3000, isClosable: true });
+    // Trigger refetch to get updated list from backend
+    setRefetchTrigger(prev => prev + 1);
   };
 
   return (

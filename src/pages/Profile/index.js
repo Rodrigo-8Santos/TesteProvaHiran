@@ -33,19 +33,27 @@ const Profile = () => {
       setIsLoading(true);
       setError('');
       try {
-        // Assuming userService.getUserById exists or similar
-        // We might need to fetch based on the authenticated user's ID
-        const data = await userService.getUserById(user.id); 
-        if (data) {
-          setProfile(data);
-          setFormData({ nome: data.nome || '', email: data.email || '', idade: data.idade || '' });
+        // Corrected: Use getUserById and handle { data, error } structure
+        const { data: profileData, error: fetchError } = await userService.getUserById(user.id);
+        if (fetchError) {
+          console.error("Failed to fetch profile:", fetchError);
+          // Handle specific errors like profile not found (though maybeSingle handles this)
+          if (fetchError.message.includes("PGRST116")) { // Example check for "Not Found"
+               setError('Perfil não encontrado no sistema.');
+          } else {
+              throw new Error('Falha ao carregar dados do perfil.');
+          }
+        } else if (profileData) {
+          setProfile(profileData);
+          setFormData({ nome: profileData.nome || '', email: profileData.email || '', idade: profileData.idade ? profileData.idade.toString() : '' }); // Ensure age is string for input
         } else {
+           // This case might occur if maybeSingle returns null data without error
            setError('Perfil não encontrado no sistema.');
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
-        setError('Falha ao carregar dados do perfil.');
-        toast({ title: "Erro", description: 'Não foi possível carregar o perfil.', status: "error", duration: 5000, isClosable: true });
+        setError(err.message || 'Falha ao carregar dados do perfil.');
+        toast({ title: "Erro", description: err.message || 'Não foi possível carregar o perfil.', status: "error", duration: 5000, isClosable: true });
       } finally {
         setIsLoading(false);
       }
@@ -73,22 +81,50 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     if (!profile) return;
     setIsSaving(true);
-    setError('');
+    setError("");
     try {
-      const updatedData = { 
-        ...profile, // Keep existing data like id
+      const updatedData = {
+        // Only include fields that are meant to be updated
         nome: formData.nome,
-        // email: formData.email, // Usually email is not editable directly here
-        idade: parseInt(formData.idade, 10) || profile.idade, // Ensure age is a number
+        idade: parseInt(formData.idade, 10) || null, // Ensure age is a number or null
+        // email is usually not updated here
+        // descricao is missing from the form, but present in the service update function
+        // If descricao should be editable, add it to the form state and here
       };
-      const updatedProfile = await userService.updateUser(profile.id, updatedData);
-      setProfile(updatedProfile);
+
+      // Corrected: Use updateUserProfile and handle { data, error } structure
+      const { data: updatedProfileData, error: updateError } = await userService.updateUserProfile(profile.id, updatedData);
+
+      if (updateError) {
+        console.error("Failed to save profile:", updateError);
+        throw new Error("Falha ao salvar alterações no perfil.");
+      }
+
+      // Update the local profile state with the potentially updated data returned from the service
+      // Supabase update often returns the updated row(s)
+      if (updatedProfileData && updatedProfileData.length > 0) {
+         // Assuming the service returns the updated profile data in an array
+         const newlyUpdatedProfile = { ...profile, ...updatedProfileData[0] }; // Merge existing with updated
+         setProfile(newlyUpdatedProfile);
+         // Update form data as well to reflect saved state
+         setFormData({ 
+             nome: newlyUpdatedProfile.nome || '', 
+             email: newlyUpdatedProfile.email || '', // Keep email from profile
+             idade: newlyUpdatedProfile.idade ? newlyUpdatedProfile.idade.toString() : '' 
+         });
+      } else {
+          // If service doesn't return updated data, update locally based on formData
+          const locallyUpdatedProfile = { ...profile, ...updatedData };
+          setProfile(locallyUpdatedProfile);
+          // formData is already up-to-date in this case
+      }
+
       setIsEditing(false);
       toast({ title: "Perfil Atualizado", description: "Suas informações foram salvas.", status: "success", duration: 3000, isClosable: true });
     } catch (err) {
       console.error("Failed to save profile:", err);
-      setError('Falha ao salvar alterações no perfil.');
-      toast({ title: "Erro", description: 'Não foi possível salvar o perfil.', status: "error", duration: 5000, isClosable: true });
+      setError(err.message || "Falha ao salvar alterações no perfil.");
+      toast({ title: "Erro", description: err.message || "Não foi possível salvar o perfil.", status: "error", duration: 5000, isClosable: true });
     } finally {
       setIsSaving(false);
     }
@@ -99,18 +135,37 @@ const Profile = () => {
     if (!user) return;
     // Add loading state for deletion?
     try {
-      // 1. Delete user profile data from 'usuarios' table
-      await userService.deleteUser(user.id);
-      // 2. Log out the user
+      // Corrected: Use deleteUserAccount and handle potential error
+      const { error: deleteError } = await userService.deleteUserAccount(user.id);
+
+      if (deleteError) {
+        // Handle case where auth deletion might fail but profile is gone
+        if (deleteError.message.includes("User not found")) { // Example check
+             console.warn("User profile might be deleted, but auth deletion failed:", deleteError);
+             // Proceed with logout even if auth deletion failed partially
+        } else {
+            throw deleteError; // Rethrow other errors
+        }
+      }
+
+      // Log out the user regardless of full deletion success
       await logout();
-      // 3. Optionally, delete the user from Supabase Auth (requires admin privileges or specific setup)
-      // This part is complex and might need backend/function handling.
-      // For now, we just delete the profile data and log out.
-      toast({ title: "Conta Excluída", description: "Sua conta e dados foram removidos.", status: "warning", duration: 5000, isClosable: true });
-      navigate('/login'); // Redirect to login after deletion
+
+      // Display appropriate message
+      if (deleteError && deleteError.message.includes("User not found")) {
+          toast({ title: "Conta Excluída (Parcialmente)", description: "Perfil removido, mas houve um problema ao remover a autenticação. Você foi desconectado.", status: "warning", duration: 5000, isClosable: true });
+      } else if (deleteError) {
+          // If a different error occurred during deletion but we still logged out
+          toast({ title: "Erro na Exclusão", description: "Houve um erro ao excluir a conta, mas você foi desconectado.", status: "error", duration: 5000, isClosable: true });
+      } else {
+          toast({ title: "Conta Excluída", description: "Sua conta e dados foram removidos. Você foi desconectado.", status: "success", duration: 5000, isClosable: true });
+      }
+
+      navigate("/login"); // Redirect to login after deletion/logout
     } catch (err) {
       console.error("Failed to delete account:", err);
-      toast({ title: "Erro", description: 'Falha ao excluir a conta.', status: "error", duration: 5000, isClosable: true });
+      toast({ title: "Erro Crítico", description: "Falha ao tentar excluir a conta ou fazer logout.", status: "error", duration: 5000, isClosable: true });
+      // Consider if logout should be attempted again in catch block
     }
   };
 

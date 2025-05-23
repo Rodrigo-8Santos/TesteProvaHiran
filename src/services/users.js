@@ -46,30 +46,36 @@ export const userService = {
     }
   },
 
-  // Excluir conta do usuário
+  // Excluir conta do usuário (AGORA CHAMA A EDGE FUNCTION)
   async deleteUserAccount(userId) {
     try {
-      // Primeiro excluir o registro na tabela de usuários
-      const { error: deleteProfileError } = await supabase
-        .from('usuarios')
-        .delete()
-        .eq('id', userId);
-
-      if (deleteProfileError) throw deleteProfileError;
-
-      // Depois excluir a autenticação do usuário
-      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(userId);
+      console.log(`Invoking Edge Function 'delete-user' for userId: ${userId}`);
       
-      if (deleteAuthError) {
-        // Se não conseguir excluir a autenticação, pelo menos faz logout
-        await supabase.auth.signOut();
-        console.warn('Não foi possível excluir completamente a autenticação, mas o perfil foi removido');
+      // Chama a Edge Function 'delete-user'
+      const { data, error: functionError } = await supabase.functions.invoke(
+        'delete-user', // Nome da sua Edge Function
+        {
+          body: { userId: userId }, // Passa o userId no corpo da requisição
+        }
+      );
+
+      // Verifica se houve erro ao invocar ou executar a função
+      if (functionError) {
+        console.error("Erro ao invocar/executar a Edge Function:", functionError);
+        // Tenta extrair uma mensagem de erro mais específica, se disponível
+        const errorMessage = functionError.context?.error?.message || functionError.message || "Falha ao executar a exclusão no servidor.";
+        throw new Error(errorMessage);
       }
 
-      return { error: null };
+      // Se a função foi invocada e executada sem erros (status 2xx)
+      console.log("Edge Function 'delete-user' executed successfully:", data);
+      return { error: null }; // Indica sucesso para o frontend
+
     } catch (error) {
-      console.error('Erro ao excluir conta:', error);
-      return { error };
+      // Captura erros da invocação ou erros lançados pela própria função
+      console.error("Erro geral ao tentar excluir conta via Edge Function:", error);
+      // Retorna o erro para o frontend tratar (ex: exibir no toast)
+      return { error }; 
     }
   },
 

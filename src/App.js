@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChakraProvider, extendTheme, Spinner, Center } from '@chakra-ui/react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -14,40 +14,57 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import UserList from './pages/UserList';
 
-// --- Blackwall Theme Customization ---
+// --- Blackwall Theme Customization (Red Dominant) ---
 const blackwallColors = {
-  background: '#0a0a0a', // Main background
-  panel: '#121212',      // Cards, Modals background
-  text: '#c0c0c0',        // Primary text
-  highlight: '#2dd4f7',   // Accent/Action
-  danger: '#750000',       // Hover/Error/Active Shadow
+  background: '#050505', // Even darker background
+  panel: '#101010',      // Slightly darker panels
+  text: '#b0b0b0',        // Slightly dimmer text for contrast with red
+  highlight: '#ff073a',   // Intense Neon Red (was cyan #2dd4f7)
+  danger: '#ff073a',       // Use the same intense red for danger/errors
+  subtleRed: '#750000',   // Darker red for shadows/background elements
+  cyanDetail: '#2dd4f7',  // Keep cyan for very specific, minimal details if needed
 };
 
 const theme = extendTheme({
   colors: {
+    // BRAND IS NOW RED
     brand: {
+      50: '#ffe5ea',
+      100: '#ffb8c5',
+      200: '#ff8aa0',
+      300: '#ff5c7a',
+      400: blackwallColors.highlight, // #ff073a
+      500: '#e60030',
+      600: '#b30026',
+      700: '#80001b',
+      800: '#500011',
+      900: '#33000a',
+    },
+    // Keep red scale, but danger color uses highlight now
+    red: {
+      50: '#ffe5ea',
+      100: '#ffb8c5',
+      200: '#ff8aa0',
+      300: '#ff5c7a',
+      400: blackwallColors.highlight, // #ff073a
+      500: '#e60030',
+      600: '#b30026',
+      700: blackwallColors.highlight, // Use highlight red for errors too
+      800: '#500011',
+      900: '#33000a',
+    },
+    // Keep cyan scale for potential minimal details
+    cyan: {
       50: '#e0fcff',
       100: '#b3f6ff',
       200: '#86f0ff',
       300: '#59e9ff',
-      400: blackwallColors.highlight, // #2dd4f7
+      400: blackwallColors.cyanDetail, // #2dd4f7
       500: '#1ab8d9',
       600: '#0e9cb9',
       700: '#077f99',
       800: '#03637a',
       900: '#00475b',
-    },
-    red: {
-      50: '#ffe5e5',
-      100: '#ffb8b8',
-      200: '#ff8a8a',
-      300: '#ff5c5c',
-      400: '#ff2e2e',
-      500: '#e61414',
-      600: '#b30000',
-      700: blackwallColors.danger, // #750000
-      800: '#520000',
-      900: '#330000',
     },
     gray: {
       50: '#f7f7f7',
@@ -60,8 +77,8 @@ const theme = extendTheme({
       700: '#585858',
       800: '#414141',
       900: '#2a2a2a',
-      950: blackwallColors.panel, // #121212
-      1000: blackwallColors.background, // #0a0a0a
+      950: blackwallColors.panel, // #101010
+      1000: blackwallColors.background, // #050505
     },
     blackwall: blackwallColors,
   },
@@ -75,14 +92,14 @@ const theme = extendTheme({
         bg: 'blackwall.background',
         color: 'blackwall.text',
         lineHeight: 'tall',
-        overflowX: 'hidden', // Prevent horizontal scroll potentially caused by glitch
+        overflowX: 'hidden',
       },
       a: {
-        color: 'brand.400',
+        color: 'brand.400', // Red links
         _hover: {
-          textDecoration: 'none', // Remove underline for cyberpunk style
+          textDecoration: 'none',
           color: 'brand.300',
-          filter: `drop-shadow(0 0 5px ${blackwallColors.highlight})`, // Subtle glow on link hover
+          filter: `drop-shadow(0 0 8px ${blackwallColors.highlight})`, // Red glow
         },
       },
       '::-webkit-scrollbar': {
@@ -92,8 +109,8 @@ const theme = extendTheme({
         background: 'blackwall.panel',
       },
       '::-webkit-scrollbar-thumb': {
-        background: 'brand.700', // Darker thumb
-        borderRadius: '0px', // Sharp edges
+        background: 'brand.700', // Darker red thumb
+        borderRadius: '0px',
         border: `1px solid ${blackwallColors.highlight}`,
         _hover: {
           background: 'brand.500',
@@ -106,45 +123,49 @@ const theme = extendTheme({
       baseStyle: {
         fontFamily: 'heading',
         fontWeight: '600',
-        borderRadius: 'sm', // Slightly sharper edges
+        borderRadius: 'sm',
         transition: 'all 0.3s ease-out',
       },
       variants: {
         solid: (props) => ({
-          bg: props.colorScheme === 'red' ? 'red.700' : 'brand.400',
+          // Default solid is now red (brand)
+          bg: props.colorScheme === 'red' ? 'red.400' : 'brand.400',
           color: props.colorScheme === 'red' ? 'white' : 'blackwall.background',
           _hover: {
-            bg: props.colorScheme === 'red' ? 'red.600' : 'brand.300',
+            bg: props.colorScheme === 'red' ? 'red.300' : 'brand.300',
             transform: 'translateY(-2px)',
-            boxShadow: `0 0 15px ${props.colorScheme === 'red' ? blackwallColors.danger : blackwallColors.highlight}, 0 0 5px ${props.colorScheme === 'red' ? blackwallColors.danger : blackwallColors.highlight} inset`,
+            // Use highlight (red) for both brand and red schemes now
+            boxShadow: `0 0 15px ${blackwallColors.highlight}, 0 0 5px ${blackwallColors.highlight} inset`,
           },
           _active: {
-            bg: props.colorScheme === 'red' ? 'red.800' : 'brand.500',
+            bg: props.colorScheme === 'red' ? 'red.500' : 'brand.500',
             transform: 'translateY(0px)',
-            boxShadow: `0 0 5px ${props.colorScheme === 'red' ? blackwallColors.danger : blackwallColors.highlight}, 0 0 2px ${props.colorScheme === 'red' ? blackwallColors.danger : blackwallColors.highlight} inset`,
+            boxShadow: `0 0 5px ${blackwallColors.highlight}, 0 0 2px ${blackwallColors.highlight} inset`,
           }
         }),
         outline: (props) => ({
-          borderWidth: '2px', // Thicker border
-          borderColor: props.colorScheme === 'red' ? 'red.700' : 'brand.400',
+          borderWidth: '2px',
+          // Default outline is now red (brand)
+          borderColor: props.colorScheme === 'red' ? 'red.400' : 'brand.400',
           color: props.colorScheme === 'red' ? 'red.300' : 'brand.400',
           _hover: {
             bg: 'transparent',
-            borderColor: props.colorScheme === 'red' ? 'red.500' : 'brand.300',
+            borderColor: props.colorScheme === 'red' ? 'red.300' : 'brand.300',
             color: props.colorScheme === 'red' ? 'red.200' : 'brand.300',
             transform: 'translateY(-2px)',
-            boxShadow: `0 0 15px ${props.colorScheme === 'red' ? blackwallColors.danger : blackwallColors.highlight}`,
+            boxShadow: `0 0 15px ${blackwallColors.highlight}`,
           },
            _active: {
-            bg: props.colorScheme === 'red' ? 'rgba(117, 0, 0, 0.2)' : 'rgba(45, 212, 247, 0.1)',
+            // Use highlight (red) for both brand and red schemes now
+            bg: 'rgba(255, 7, 58, 0.1)', // Red transparent background
             transform: 'translateY(0px)',
-            boxShadow: `0 0 5px ${props.colorScheme === 'red' ? blackwallColors.danger : blackwallColors.highlight}`,
+            boxShadow: `0 0 5px ${blackwallColors.highlight}`,
           },
         }),
         ghost: (props) => ({
-           color: 'brand.400',
+           color: 'brand.400', // Red ghost button
            _hover: {
-             bg: 'rgba(45, 212, 247, 0.05)', // More subtle background
+             bg: 'rgba(255, 7, 58, 0.05)', // Red subtle background
              color: 'brand.300',
              textShadow: `0 0 8px ${blackwallColors.highlight}`,
            }
@@ -158,7 +179,7 @@ const theme = extendTheme({
         }
       },
       defaultProps: {
-        focusBorderColor: 'brand.400',
+        focusBorderColor: 'brand.400', // Red focus border
       },
       variants: {
         outline: {
@@ -171,7 +192,7 @@ const theme = extendTheme({
               borderColor: 'gray.600',
             },
             _placeholder: {
-              color: 'gray.600', // Darker placeholder
+              color: 'gray.500',
               fontStyle: 'italic',
             }
           }
@@ -190,7 +211,7 @@ const theme = extendTheme({
               borderColor: 'gray.600',
             },
             _placeholder: {
-              color: 'gray.600',
+              color: 'gray.500', // Adjusted for better contrast
               fontStyle: 'italic',
             }
           }
@@ -202,14 +223,15 @@ const theme = extendTheme({
         container: {
           bg: 'blackwall.panel',
           borderWidth: '1px',
-          borderColor: 'gray.800', // Darker border
+          borderColor: 'gray.800',
           borderRadius: 'md',
           color: 'blackwall.text',
           boxShadow: `0 0 10px rgba(18, 18, 18, 0.5)`,
           transition: 'all 0.3s ease-out',
           _hover: {
-             borderColor: 'brand.700',
-             boxShadow: `0 0 15px rgba(45, 212, 247, 0.15), 0 0 5px rgba(117, 0, 0, 0.1)`,
+             borderColor: 'brand.700', // Dark red border on hover
+             // Red glow on hover
+             boxShadow: `0 0 15px rgba(255, 7, 58, 0.15), 0 0 5px rgba(117, 0, 0, 0.1)`,
           }
         }
       }
@@ -220,13 +242,14 @@ const theme = extendTheme({
            bg: 'blackwall.panel',
            color: 'blackwall.text',
            borderWidth: '1px',
-           borderColor: 'brand.700',
+           borderColor: 'brand.700', // Dark red border
            borderRadius: 'md',
-           boxShadow: `0 0 25px rgba(45, 212, 247, 0.2), 0 0 10px rgba(117, 0, 0, 0.3)`,
+           // Red glow for modal
+           boxShadow: `0 0 25px rgba(255, 7, 58, 0.2), 0 0 10px rgba(117, 0, 0, 0.3)`,
          },
          header: {
            fontFamily: 'heading',
-           color: 'brand.400',
+           color: 'brand.400', // Red header text
            borderBottomWidth: '1px',
            borderColor: 'gray.700',
            py: 3, 
@@ -247,7 +270,7 @@ const theme = extendTheme({
            right: 4,
            color: 'gray.500',
            _hover: { 
-             bg: 'rgba(45, 212, 247, 0.1)',
+             bg: 'rgba(255, 7, 58, 0.1)', // Red subtle background
              color: 'brand.300',
            }
          }
@@ -255,13 +278,13 @@ const theme = extendTheme({
     },
     Heading: {
       baseStyle: {
-        fontFamily: 'heading', // Orbitron by default
+        fontFamily: 'heading',
         fontWeight: '600',
       }
     },
     Text: {
       baseStyle: {
-        fontFamily: 'body', // Rajdhani by default
+        fontFamily: 'body',
       }
     },
     Alert: {
@@ -269,6 +292,34 @@ const theme = extendTheme({
         container: {
           borderRadius: 'sm',
         }
+      },
+      // Make sure Alert uses the red theme correctly
+      variants: {
+        subtle: (props) => {
+          const { colorScheme: c } = props
+          if (c !== 'red') return {}
+          return {
+            container: {
+              bg: `red.900`, // Dark red background
+              color: `red.100` // Light red text
+            }
+          }
+        },
+        solid: (props) => {
+           const { colorScheme: c } = props
+           if (c !== 'red') return {}
+           return {
+             container: {
+               bg: `red.400`, // Highlight red background
+               color: `white` // White text
+             }
+           }
+        }
+      }
+    },
+    Spinner: {
+      baseStyle: {
+        color: 'brand.400', // Red spinner
       }
     }
   },
@@ -285,7 +336,8 @@ const ProtectedRoute = ({ children }) => {
   if (loading) {
     return (
       <Center bg="blackwall.background" h="100vh">
-        <Spinner size="xl" color="brand.400" thickness='4px' speed='0.65s' emptyColor='gray.700' />
+        {/* Spinner color is now handled by theme */}
+        <Spinner size="xl" thickness='4px' speed='0.65s' emptyColor='gray.700' />
       </Center>
     );
   }
@@ -298,6 +350,10 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    document.title = "NoLight Protocol";
+  }, []); // Executa apenas uma vez na montagem
+
   return (
     <ChakraProvider theme={theme}>
       <AuthProvider>

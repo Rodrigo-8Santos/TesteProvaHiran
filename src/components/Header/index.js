@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Flex, Heading, Spacer, Button, Link as ChakraLink } from '@chakra-ui/react';
+import { Box, Flex, Heading, Spacer, Button, Link as ChakraLink, Image } from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import newLogo from '../../nolight_logo.jpg'; // Import the new logo
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -30,26 +31,17 @@ const Header = () => {
       px={{ base: 4, md: 6, lg: 8 }}
       borderBottomWidth="1px"
       borderColor={borderColor} // Use a subtle border
-      boxShadow={`0 1px 3px 0 rgba(45, 212, 247, 0.1), 0 1px 2px 0 rgba(117, 0, 0, 0.06)`} // Subtle glow effect
+      boxShadow={`0 1px 3px 0 rgba(255, 7, 58, 0.1), 0 1px 2px 0 rgba(117, 0, 0, 0.06)`} // Red glow effect
       color={textColor}
       position="sticky" // Make header sticky if desired
       top={0}
       zIndex="sticky"
     >
       <Flex align="center" maxW="container.xl" mx="auto">
-        {/* Use Orbitron font for the main title via Heading's default */}
-        <Heading
-          as={RouterLink}
-          to={user ? "/users" : "/"}
-          size="md"
-          fontWeight="600"
-          color={linkColor}
-          className="glitch" // Apply glitch effect to title
-          data-text="NeoCRUD"
-          _hover={{ textDecoration: 'none' }} // Prevent underline on hover for glitch
-        >
-          NeoCRUD
-        </Heading>
+        {/* Replace Heading with Image Logo */}
+        <ChakraLink as={RouterLink} to={user ? "/users" : "/"} _hover={{ textDecoration: 'none' }}>
+          <Image src={newLogo} alt="NoLight Protocol Logo" height="40px" />
+        </ChakraLink>
         <Spacer />
         <Flex align="center" gap={3}>
           {/* Links for Logged-in Users */}

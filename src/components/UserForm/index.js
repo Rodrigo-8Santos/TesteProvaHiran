@@ -34,6 +34,11 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!userToEdit) {
+      // Should not happen if Add User is disabled, but good to check
+      toast({ title: "Erro", description: "Nenhum usuário selecionado para edição.", status: "error" });
+      return;
+    }
     setIsLoading(true);
     try {
       const ageNumber = parseInt(formData.idade, 10);
@@ -41,23 +46,31 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
         throw new Error("Idade deve ser um número válido.");
       }
       const dataToSave = {
+        // Only include fields editable in this form
         nome: formData.nome,
-        // Email is likely not editable here, handled by Supabase Auth
         idade: ageNumber,
+        // descricao is missing from form, but present in service. Add if needed.
       };
 
-      let savedUser;
-      if (userToEdit) {
-        // Update existing user
-        savedUser = await userService.updateUser(userToEdit.id, dataToSave);
-        toast({ title: "Identidade Atualizada", status: "success", duration: 3000, isClosable: true });
-      } else {
-        // Add new user (Functionality removed from list, kept here for potential future use)
-        // savedUser = await userService.createUserProfile(dataToSave); // createUserProfile might need email/auth ID
-        // toast({ title: "Identidade Criada", status: "success", duration: 3000, isClosable: true });
-        throw new Error("Funcionalidade de adicionar usuário desativada.");
+      // Corrected: Use updateUserProfile and handle { data, error } structure
+      const { data: updatedUserData, error: updateError } = await userService.updateUserProfile(userToEdit.id, dataToSave);
+
+      if (updateError) {
+        console.error("Failed to update user:", updateError);
+        throw new Error("Falha ao atualizar os dados da identidade.");
       }
-      onSave(savedUser); // Pass updated/created user back
+
+      // Prepare the user data to pass back to the parent (UserList)
+      // Merge existing user data with potentially updated data from the service response
+      let finalUpdatedUser = { ...userToEdit, ...dataToSave }; // Start with local changes
+      if (updatedUserData && updatedUserData.length > 0) {
+        // If service returns the updated user, merge that for accuracy
+        finalUpdatedUser = { ...userToEdit, ...updatedUserData[0] };
+      }
+
+      toast({ title: "Identidade Atualizada", status: "success", duration: 3000, isClosable: true });
+      onSave(finalUpdatedUser); // Pass the updated user data back
+
     } catch (err) {
       console.error("Failed to save user:", err);
       toast({ title: "Erro ao Salvar", description: err.message || "Não foi possível salvar os dados.", status: "error", duration: 5000, isClosable: true });
